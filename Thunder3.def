@@ -1,0 +1,7 @@
+; Thunder3.def : Declares the module parameters for the DLL.
+
+LIBRARY      "Thunder3"
+DESCRIPTION  'Thunder3 Windows Dynamic Link Library'
+
+EXPORTS
+	SetHook
