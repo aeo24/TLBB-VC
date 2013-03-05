@@ -6,10 +6,12 @@
 #include "tab1.h"
 #include "globalfunc.h"
 #include <vector>
-#include "classes.h"
-
 #include <process.h>
+#include "detours.h"
+#include <string>
 
+using namespace std;
+#pragma comment(lib,"detours.lib")
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -69,32 +71,47 @@ unsigned long SetProtection (unsigned int Address, unsigned int Size, unsigned l
 }
 
 HWND h=NULL;
+vector<string> cmds;
 void myLua_dostring(DWORD lua_state,char* str)
 {
+
+	string txt(str);
 	if(h!=NULL)
 	{
 		HWND m_edit=::GetDlgItem(h,IDC_EDIT1);
-		::SetWindowText(m_edit,str);
+		string _txt;
+		for each(string u in cmds)
+		{
+			_txt.append(u.c_str());
+			_txt.append("\r\n");
+		}
+		SetDlgItemTextA(h,IDC_EDIT1,_txt.c_str());
+
+		for each(string u in cmds)
+		{
+			if(u==txt)
+				return;
+		}
+		cmds.push_back(txt);
 	}
 	lua_dostring(lua_state,str);
 }
 
 void tab1::OnBnClickedButton1()
 {
-	h=m_hWnd;
-	LPVOID fc=(LPVOID)*(DWORD*)0x7C2370;
-	lua_dostring=reinterpret_cast<decltype(lua_dostring)>(fc);
-	m_edit1.Format("%x",lua_dostring);
-
-	DWORD des=(DWORD)(myLua_dostring);
-	DWORD oldProtection=SetProtection(0x7C2370,10,PAGE_EXECUTE_READWRITE);
-	memcpy((void*)(0x7C2370),&des,4);
-	SetProtection(0x7C2370,10,oldProtection);
-	UpdateData(FALSE);
+	DetourTransactionBegin();
+	DetourUpdateThread(GetCurrentThread());
+	DetourDetach((PVOID*)&lua_dostring,myLua_dostring);
+	DetourTransactionCommit();
 }
 
 
 void tab1::OnBnClickedButton2()
 {
-
+	h=m_hWnd;
+	lua_dostring=reinterpret_cast<decltype(lua_dostring)>(*(DWORD*)0x7C2370);
+	DetourTransactionBegin();
+	DetourUpdateThread(GetCurrentThread());
+	DetourAttach((PVOID*)&lua_dostring,myLua_dostring);
+	DetourTransactionCommit();
 }
